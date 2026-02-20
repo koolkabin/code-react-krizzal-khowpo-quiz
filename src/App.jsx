@@ -7,6 +7,80 @@ import { submitScore } from "./api/submitScore";
 const QUESTIONS_PER_QUIZ = 10;
 const TIMER_SECONDS = 15;
 const QUIZ_VERSION = "1.0";
+const SITE_URL = "https://khowpaquiz.essencetechnologies.com";
+const MAX_POINTS_PER_Q = TIMER_SECONDS * 1000 * 10; // 150 000
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Badge tiers (5 categories, based on correct answer count out of 10)
+// ─────────────────────────────────────────────────────────────────────────────
+const BADGES = [
+  { minCorrect: 10, name: "Legend",     nameNp: "किंवदन्ती",  emoji: "🏆", bgStart: "#B8860B", bgEnd: "#4A2500" },
+  { minCorrect: 8,  name: "Expert",     nameNp: "विशेषज्ञ",  emoji: "🥇", bgStart: "#8B1A1A", bgEnd: "#4A0000" },
+  { minCorrect: 6,  name: "Scholar",    nameNp: "विद्वान",   emoji: "🥈", bgStart: "#1A3A6B", bgEnd: "#0A1E3D" },
+  { minCorrect: 4,  name: "Learner",    nameNp: "अध्येता",   emoji: "🥉", bgStart: "#1A5C2A", bgEnd: "#0A2A10" },
+  { minCorrect: 0,  name: "Beginner",   nameNp: "नवसिखारु", emoji: "📜", bgStart: "#4A4A4A", bgEnd: "#1A1A1A" },
+];
+
+function getBadge(correctCount) {
+  return BADGES.find((b) => correctCount >= b.minCorrect) ?? BADGES[BADGES.length - 1];
+}
+
+/** Draw the badge image onto a given <canvas> element */
+function drawBadge(canvas, { badgeName, emoji, bgStart, bgEnd, correctCount, totalQuestions, pointsScore, username }) {
+  const ctx = canvas.getContext("2d");
+  const w = canvas.width;
+  const h = canvas.height;
+
+  const grad = ctx.createLinearGradient(0, 0, 0, h);
+  grad.addColorStop(0, bgStart);
+  grad.addColorStop(1, bgEnd);
+  ctx.fillStyle = grad;
+  ctx.fillRect(0, 0, w, h);
+
+  // Border
+  ctx.strokeStyle = "#D4A017";
+  ctx.lineWidth = 8;
+  ctx.strokeRect(4, 4, w - 8, h - 8);
+
+  // Title
+  ctx.fillStyle = "#D4A017";
+  ctx.font = "bold 22px sans-serif";
+  ctx.textAlign = "center";
+  ctx.fillText("KHOWPA QUIZ", w / 2, 46);
+
+  // Subtitle line
+  ctx.fillStyle = "rgba(212,160,23,0.6)";
+  ctx.fillRect(40, 54, w - 80, 2);
+
+  // Emoji
+  ctx.font = "84px sans-serif";
+  ctx.fillText(emoji, w / 2, 160);
+
+  // Badge name
+  ctx.fillStyle = "#FFFFFF";
+  ctx.font = "bold 38px sans-serif";
+  ctx.fillText(badgeName.toUpperCase(), w / 2, 215);
+
+  // Correct count
+  ctx.font = "bold 30px sans-serif";
+  ctx.fillStyle = "#D4A017";
+  ctx.fillText(`${correctCount} / ${totalQuestions} Correct`, w / 2, 265);
+
+  // Points
+  ctx.font = "22px sans-serif";
+  ctx.fillStyle = "rgba(255,255,255,0.85)";
+  ctx.fillText(`${pointsScore.toLocaleString()} pts`, w / 2, 300);
+
+  // Username
+  ctx.fillStyle = "#FFFFFF";
+  ctx.font = "bold 20px sans-serif";
+  ctx.fillText(username, w / 2, 340);
+
+  // Domain
+  ctx.fillStyle = "rgba(212,160,23,0.8)";
+  ctx.font = "14px sans-serif";
+  ctx.fillText(SITE_URL.replace("https://", ""), w / 2, 375);
+}
 
 /** Fisher-Yates shuffle (returns a new array) */
 function shuffle(arr) {
@@ -478,9 +552,9 @@ const T = {
       "Test your knowledge about the ancient city of Bhaktapur based on the Class 6 Social Studies / Local Curriculum.",
     features: [
       "📜 10 random questions – multiple choice",
-      "⏱ 15-second timer per question",
+      "⏱ 15-second timer – faster answers earn more points",
       "✅ Instant feedback after each answer",
-      "🏆 Printable score card at the end",
+      "🏆 Earn a badge & share your score!",
     ],
     nameLabel: "Your Name",
     namePlaceholder: "Enter your name to begin",
@@ -488,12 +562,20 @@ const T = {
     startBtn: "🏯 Start Quiz",
     restartBtn: "🔄 Try Again",
     printBtn: "🖨️ Print / Save as PDF",
+    shareOnFb: "📘 Share on Facebook",
+    copyLink: "🔗 Copy Link",
+    copied: "✅ Copied!",
+    downloadBadge: "⬇️ Download Badge",
     quizTitle: "Bhaktapur Quiz",
     quizComplete: "Quiz Complete!",
     scoreCardTitle: "Score Card",
     score: "Score",
+    points: "pts",
+    correct: "Correct",
     name: "Name",
     date: "Date & Time",
+    badge: "Badge",
+    liveScore: "Score",
     timeLabel: (s) => `${s}s`,
     correctMsg: "🎉 Correct! Well done.",
     timeUpMsg: "⏰ Time's up!",
@@ -510,9 +592,9 @@ const T = {
       "कक्षा ६ सामाजिक अध्ययन / स्थानीय पाठ्यक्रममा आधारित भक्तपुरको प्राचीन शहरबारे आफ्नो ज्ञान जाँच्नुहोस्।",
     features: [
       "📜 १० अनियमित प्रश्नहरू – बहुविकल्पीय",
-      "⏱ प्रत्येक प्रश्नमा १५ सेकेन्डको समय",
+      "⏱ १५ सेकेन्डको टाइमर – छिटो उत्तरले बढी अंक पाइन्छ",
       "✅ प्रत्येक उत्तर पछि तत्काल प्रतिक्रिया",
-      "🏆 अन्तमा प्रिन्ट गर्न मिल्ने स्कोर कार्ड",
+      "🏆 बिल्ला पाउनुहोस् र आफ्नो स्कोर सेयर गर्नुहोस्!",
     ],
     nameLabel: "तपाईंको नाम",
     namePlaceholder: "आफ्नो नाम लेख्नुहोस्",
@@ -520,12 +602,20 @@ const T = {
     startBtn: "🏯 प्रश्नोत्तरी सुरु गर्नुहोस्",
     restartBtn: "🔄 फेरि प्रयास गर्नुहोस्",
     printBtn: "🖨️ प्रिन्ट / PDF मा सेभ गर्नुहोस्",
+    shareOnFb: "📘 फेसबुकमा सेयर गर्नुहोस्",
+    copyLink: "🔗 लिंक कपी गर्नुहोस्",
+    copied: "✅ कपी भयो!",
+    downloadBadge: "⬇️ बिल्ला डाउनलोड गर्नुहोस्",
     quizTitle: "भक्तपुर प्रश्नोत्तरी",
     quizComplete: "प्रश्नोत्तरी सम्पन्न!",
     scoreCardTitle: "स्कोर कार्ड",
     score: "स्कोर",
+    points: "अंक",
+    correct: "सही",
     name: "नाम",
     date: "मिति र समय",
+    badge: "बिल्ला",
+    liveScore: "स्कोर",
     timeLabel: (s) => `${s}s`,
     correctMsg: "🎉 सही! राम्रो प्रयास।",
     timeUpMsg: "⏰ समय सकियो!",
@@ -550,17 +640,22 @@ export default function App() {
   const [currentIndex, setCurrentIndex] = useState(0);
   // null = nothing selected (time ran out), otherwise the chosen option text
   const [selected, setSelected] = useState(null);
-  const [score, setScore] = useState(0);
+  const [score, setScore] = useState(0);       // time-based points
+  const [correctCount, setCorrectCount] = useState(0); // # of correct answers
   const [showFeedback, setShowFeedback] = useState(false);
   const [timeLeft, setTimeLeft] = useState(TIMER_SECONDS);
   const [quizDateTime, setQuizDateTime] = useState(null);
   const [imgError, setImgError] = useState({});
+  const [copied, setCopied] = useState(false);
 
-  // Refs to read latest score/quizDateTime inside the auto-advance effect
-  // without adding them to the dependency array.
+  // Refs to read latest score/correctCount/quizDateTime inside the auto-advance
+  // effect without adding them to the dependency array.
   const scoreRef = useRef(score);
+  const correctCountRef = useRef(correctCount);
   const quizDateTimeRef = useRef(quizDateTime);
+  const badgeCanvasRef = useRef(null);
   useEffect(() => { scoreRef.current = score; });
+  useEffect(() => { correctCountRef.current = correctCount; });
   useEffect(() => { quizDateTimeRef.current = quizDateTime; });
 
   const t = T[lang];
@@ -589,7 +684,7 @@ export default function App() {
       } else {
         const start = quizDateTimeRef.current;
         const durationMs = start ? Date.now() - start.getTime() : undefined;
-        void submitScore({ score: scoreRef.current, total_questions: questions.length, quiz_version: QUIZ_VERSION, duration_ms: durationMs });
+        void submitScore({ score: scoreRef.current, total_questions: questions.length, quiz_version: QUIZ_VERSION, duration_ms: durationMs, correct_count: correctCountRef.current });
         setScreen("result");
       }
     }, 1500);
@@ -608,6 +703,7 @@ export default function App() {
     setCurrentIndex(0);
     setSelected(null);
     setScore(0);
+    setCorrectCount(0);
     setShowFeedback(false);
     setTimeLeft(TIMER_SECONDS);
     setQuizDateTime(new Date());
@@ -620,7 +716,9 @@ export default function App() {
     if (showFeedback) return;
     setSelected(option);
     if (option === questions[currentIndex][lang].answer) {
-      setScore((prev) => prev + 1);
+      const pts = timeLeft * 1000 * 10;
+      setScore((prev) => prev + pts);
+      setCorrectCount((prev) => prev + 1);
     }
     setShowFeedback(true);
   };
@@ -631,6 +729,7 @@ export default function App() {
     setCurrentIndex(0);
     setSelected(null);
     setScore(0);
+    setCorrectCount(0);
     setShowFeedback(false);
     setTimeLeft(TIMER_SECONDS);
     setQuestions([]);
@@ -638,7 +737,7 @@ export default function App() {
 
   // ── Derived values ──────────────────────────────────────────────────────────
   const percentage =
-    questions.length > 0 ? Math.round((score / questions.length) * 100) : 0;
+    questions.length > 0 ? Math.round((correctCount / questions.length) * 100) : 0;
   const timerPercent = (timeLeft / TIMER_SECONDS) * 100;
   const timerColor =
     timeLeft > 8 ? "bg-green-500" : timeLeft > 4 ? "bg-yellow-500" : "bg-red-500";
@@ -653,7 +752,71 @@ export default function App() {
       })
     : "";
 
-  // ── Derived values ──────────────────────────────────────────────────────────
+  // ── Badge ───────────────────────────────────────────────────────────────────
+  const badge = getBadge(correctCount);
+  const badgeName = lang === "np" ? badge.nameNp : badge.name;
+
+  // ── Draw badge canvas when result screen is shown ───────────────────────────
+  useEffect(() => {
+    if (screen !== "result" || !badgeCanvasRef.current) return;
+    drawBadge(badgeCanvasRef.current, {
+      badgeName: badge.name,
+      emoji: badge.emoji,
+      bgStart: badge.bgStart,
+      bgEnd: badge.bgEnd,
+      correctCount,
+      totalQuestions: questions.length,
+      pointsScore: score,
+      username,
+    });
+  }, [screen, badge, correctCount, questions.length, score, username]);
+
+  // ── Share helpers ───────────────────────────────────────────────────────────
+  const shareText =
+    lang === "np"
+      ? `मैले खोप्पा क्विजमा ${correctCount}/${questions.length} स्कोर गरें! 😎\nके तपाईं मलाई हराउन सक्नुहुन्छ? 👉 ${SITE_URL}`
+      : `I scored ${correctCount}/${questions.length} in Khowpa Quiz! 😎\nCan you beat me? 👉 ${SITE_URL}`;
+
+  const handleShareFacebook = async () => {
+    const canvas = badgeCanvasRef.current;
+    if (canvas && navigator.canShare) {
+      try {
+        const blob = await new Promise((res, rej) => {
+          canvas.toBlob((b) => (b ? res(b) : rej(new Error("toBlob returned null"))), "image/png");
+        });
+        const file = new File([blob], "khowpa-quiz-badge.png", { type: "image/png" });
+        if (navigator.canShare({ files: [file] })) {
+          await navigator.share({ text: shareText, files: [file] });
+          return;
+        }
+      } catch {
+        // fall through to URL-based share
+      }
+    }
+    const fbUrl = `https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(SITE_URL)}&quote=${encodeURIComponent(shareText)}`;
+    window.open(fbUrl, "_blank", "width=600,height=400,noopener,noreferrer");
+  };
+
+  const handleCopyLink = () => {
+    navigator.clipboard.writeText(shareText).then(() => {
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2500);
+    }).catch(() => {
+      // Fallback: prompt the user with the text
+      window.prompt("Copy this text to share:", shareText);
+    });
+  };
+
+  const handleDownloadBadge = () => {
+    const canvas = badgeCanvasRef.current;
+    if (!canvas) return;
+    const link = document.createElement("a");
+    link.download = `khowpa-quiz-badge-${badge.name.toLowerCase()}.png`;
+    link.href = canvas.toDataURL("image/png");
+    link.click();
+  };
+
+  // ── Option style helper ─────────────────────────────────────────────────────
   const optionStyle = (option) => {
     const base =
       "w-full text-left px-4 py-3 rounded-lg border-2 font-medium transition-colors duration-200 cursor-pointer";
@@ -737,7 +900,7 @@ export default function App() {
       percentage >= 80 ? t.gradeExcellent : percentage >= 50 ? t.gradeGood : t.gradePoor;
 
     return (
-      <div className="print-bg min-h-screen bg-[#1A0A00] flex items-center justify-center px-4 relative">
+      <div className="print-bg min-h-screen bg-[#1A0A00] flex items-center justify-center px-4 py-8 relative">
         <LangBtn lang={lang} onToggle={() => setLang((l) => (l === "en" ? "np" : "en"))} />
         <div
           id="score-card"
@@ -752,12 +915,27 @@ export default function App() {
             </p>
           </div>
 
+          {/* Badge canvas */}
+          <canvas
+            ref={badgeCanvasRef}
+            width={400}
+            height={400}
+            className="w-full max-w-[260px] mx-auto rounded-xl border-2 border-[#D4A017] shadow-lg mb-4 block"
+          />
+
+          {/* Badge name label */}
+          <p className="text-lg font-extrabold text-[#8B1A1A] mb-1">
+            {badge.emoji} {badgeName}
+          </p>
+
           {/* Score box */}
-          <div className="bg-[#8B1A1A] rounded-xl p-5 mb-4 text-[#FFF8E7]">
-            <p className="text-4xl font-extrabold text-[#D4A017]">
-              {score} / {questions.length}
+          <div className="bg-[#8B1A1A] rounded-xl p-4 mb-4 text-[#FFF8E7]">
+            <p className="text-3xl font-extrabold text-[#D4A017]">
+              {correctCount} / {questions.length} <span className="text-lg font-semibold">{t.correct}</span>
             </p>
-            <p className="text-base mt-1 font-semibold">{percentage}% {t.score}</p>
+            <p className="text-base mt-1 font-semibold text-[#D4A017]">
+              {score.toLocaleString()} {t.points}
+            </p>
           </div>
 
           {/* Score bar */}
@@ -771,12 +949,32 @@ export default function App() {
           <p className="text-[#4A2500] text-sm mb-4">{gradeMsg}</p>
 
           {/* Name & Date info */}
-          <div className="border-2 border-[#D4A017] rounded-xl p-3 mb-5 text-left text-sm text-[#4A2500] space-y-1 bg-white/60">
-            <div>
-              <strong>{t.name}:</strong> {username}
-            </div>
-            <div>
-              <strong>{t.date}:</strong> {formattedDateTime}
+          <div className="border-2 border-[#D4A017] rounded-xl p-3 mb-4 text-left text-sm text-[#4A2500] space-y-1 bg-white/60">
+            <div><strong>{t.name}:</strong> {username}</div>
+            <div><strong>{t.date}:</strong> {formattedDateTime}</div>
+          </div>
+
+          {/* Share buttons */}
+          <div className="flex flex-col gap-2 mb-3 no-print">
+            <button
+              onClick={handleShareFacebook}
+              className="w-full py-2 rounded-xl bg-[#1877F2] text-white font-bold text-sm hover:bg-[#1565C0] transition-colors shadow-md"
+            >
+              {t.shareOnFb}
+            </button>
+            <div className="flex gap-2">
+              <button
+                onClick={handleCopyLink}
+                className="flex-1 py-2 rounded-xl bg-[#D4A017] text-[#4A2500] font-bold text-sm hover:bg-[#c49014] transition-colors shadow-md"
+              >
+                {copied ? t.copied : t.copyLink}
+              </button>
+              <button
+                onClick={handleDownloadBadge}
+                className="flex-1 py-2 rounded-xl bg-[#6B3F1F] text-[#FFF8E7] font-bold text-sm hover:bg-[#4A2500] transition-colors shadow-md"
+              >
+                {t.downloadBadge}
+              </button>
             </div>
           </div>
 
@@ -833,6 +1031,9 @@ export default function App() {
         <div className="flex items-center justify-between mb-3">
           <span className="text-xs font-bold text-[#8B1A1A] uppercase tracking-widest">
             {t.quizTitle}
+          </span>
+          <span className="text-sm font-semibold text-[#D4A017] bg-[#8B1A1A] px-2 py-0.5 rounded-full">
+            ⭐ {score.toLocaleString()} {t.points}
           </span>
           <span className="text-sm font-semibold text-[#6B3F1F]">
             {currentIndex + 1} / {questions.length}
