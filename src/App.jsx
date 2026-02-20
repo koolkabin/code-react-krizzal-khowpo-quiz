@@ -1,10 +1,12 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
+import { submitScore } from "./api/submitScore";
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Constants
 // ─────────────────────────────────────────────────────────────────────────────
 const QUESTIONS_PER_QUIZ = 10;
 const TIMER_SECONDS = 15;
+const QUIZ_VERSION = "1.0";
 
 /** Fisher-Yates shuffle (returns a new array) */
 function shuffle(arr) {
@@ -554,6 +556,13 @@ export default function App() {
   const [quizDateTime, setQuizDateTime] = useState(null);
   const [imgError, setImgError] = useState({});
 
+  // Refs to read latest score/quizDateTime inside the auto-advance effect
+  // without adding them to the dependency array.
+  const scoreRef = useRef(score);
+  const quizDateTimeRef = useRef(quizDateTime);
+  useEffect(() => { scoreRef.current = score; });
+  useEffect(() => { quizDateTimeRef.current = quizDateTime; });
+
   const t = T[lang];
 
   // ── Timer countdown ─────────────────────────────────────────────────────────
@@ -578,6 +587,9 @@ export default function App() {
         setShowFeedback(false);
         setTimeLeft(TIMER_SECONDS);
       } else {
+        const start = quizDateTimeRef.current;
+        const durationMs = start ? Date.now() - start.getTime() : undefined;
+        void submitScore({ score: scoreRef.current, total_questions: questions.length, quiz_version: QUIZ_VERSION, duration_ms: durationMs });
         setScreen("result");
       }
     }, 1500);

@@ -35,6 +35,8 @@ jobs:
         env:
           # For custom domain it should be "/"
           VITE_BASE_URL: "/"
+          # Set VITE_SUBMIT_SCORE_URL in repository secrets to enable score submission
+          VITE_SUBMIT_SCORE_URL: ${{ secrets.VITE_SUBMIT_SCORE_URL }}
 
       # If your app is SPA (React Router, etc.), this prevents 404 on refresh
       - name: SPA fallback (optional but recommended)
