@@ -38,7 +38,10 @@ jobs:
       - name: Build
         run: npm run build
         env:
-          VITE_BASE_URL: ${{ steps.pages.outputs.base_path }}
+          VITE_BASE_URL: /
+
+      - name: Create CNAME
+        run: echo "khowpaquiz.essencetechnologies.com" > dist/CNAME
 
       - name: Upload artifact
         uses: actions/upload-pages-artifact@v3
