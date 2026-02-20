@@ -1,1 +1,24 @@
 @import "tailwindcss";
+
+@media print {
+  body {
+    background: white !important;
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+  }
+  .no-print {
+    display: none !important;
+  }
+  .print-bg {
+    background: transparent !important;
+    min-height: unset !important;
+    padding: 0 !important;
+    display: block !important;
+  }
+  #score-card {
+    box-shadow: none !important;
+    margin: 0 auto !important;
+    max-width: 480px !important;
+    border-radius: 0 !important;
+  }
+}
