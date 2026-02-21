@@ -563,6 +563,7 @@ const T = {
     restartBtn: "🔄 Try Again",
     printBtn: "🖨️ Print / Save as PDF",
     shareOnFb: "📘 Share on Facebook",
+    fbShareHint: "📋 Score text copied! Paste it in your Facebook post.",
     copyLink: "🔗 Copy Link",
     copied: "✅ Copied!",
     downloadBadge: "⬇️ Download Badge",
@@ -603,6 +604,7 @@ const T = {
     restartBtn: "🔄 फेरि प्रयास गर्नुहोस्",
     printBtn: "🖨️ प्रिन्ट / PDF मा सेभ गर्नुहोस्",
     shareOnFb: "📘 फेसबुकमा सेयर गर्नुहोस्",
+    fbShareHint: "📋 स्कोर टेक्स्ट कपी भयो! फेसबुक पोस्टमा पेस्ट गर्नुहोस्।",
     copyLink: "🔗 लिंक कपी गर्नुहोस्",
     copied: "✅ कपी भयो!",
     downloadBadge: "⬇️ बिल्ला डाउनलोड गर्नुहोस्",
@@ -647,6 +649,7 @@ export default function App() {
   const [quizDateTime, setQuizDateTime] = useState(null);
   const [imgError, setImgError] = useState({});
   const [copied, setCopied] = useState(false);
+  const [fbCopied, setFbCopied] = useState(false);
 
   // Refs to read latest score/correctCount/quizDateTime inside the auto-advance
   // effect without adding them to the dependency array.
@@ -792,6 +795,15 @@ export default function App() {
       } catch {
         // fall through to URL-based share
       }
+    }
+    // Copy share text to clipboard so the user can paste it into the Facebook post,
+    // since Facebook's sharer does not reliably include the quote parameter.
+    try {
+      await navigator.clipboard.writeText(shareText);
+      setFbCopied(true);
+      setTimeout(() => setFbCopied(false), 4000);
+    } catch {
+      // Clipboard write failed – text won't be pre-copied but the dialog still opens
     }
     const fbUrl = `https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(SITE_URL)}&quote=${encodeURIComponent(shareText)}`;
     window.open(fbUrl, "_blank", "width=600,height=400,noopener,noreferrer");
@@ -962,6 +974,11 @@ export default function App() {
             >
               {t.shareOnFb}
             </button>
+            {fbCopied && (
+              <p className="text-xs text-center text-[#1877F2] font-semibold animate-pulse">
+                {t.fbShareHint}
+              </p>
+            )}
             <div className="flex gap-2">
               <button
                 onClick={handleCopyLink}
